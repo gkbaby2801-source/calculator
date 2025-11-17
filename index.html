@@ -1,0 +1,271 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Voice Calculator </title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    color: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    transition: background 0.8s ease, color 0.8s ease;
+  }
+  body.dark {
+    background: linear-gradient(135deg, #121212, #333);
+    color: #fff;
+  }
+  .container {
+    width: 360px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.2);
+    transition: all 0.6s;
+  }
+  body.dark .container {
+    background: #222;
+    box-shadow: 0 6px 40px rgba(255,255,255,0.05);
+  }
+  .top-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+  }
+  .mic-btn, .theme-btn {
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .mic-btn { background: #42a5f5; color: #fff; }
+  .mic-btn.active { background: #ef5350; box-shadow: 0 0 15px #ef5350; }
+  .theme-btn { background: #ffd54f; color: #333; }
+  #display {
+    width: 100%;
+    height: 60px;
+    border: none;
+    border-radius: 10px;
+    font-size: 28px;
+    text-align: right;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: #f0f0f0;
+    color: #222;
+  }
+  body.dark #display {
+    background: #333;
+    color: #fff;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  button {
+    padding: 18px;
+    font-size: 18px;
+    border: none;
+    border-radius: 12px;
+    background: #90caf9;
+    color: white;
+    transition: transform 0.2s, background 0.3s;
+  }
+  button:hover { transform: scale(1.1); background: #42a5f5; }
+  body.dark button { background: #555; }
+  body.dark button:hover { background: #777; }
+
+  .tab-btns { display: flex; justify-content: space-around; margin-top: 10px; }
+  .tab-btns button { width: 30%; font-size: 16px; padding: 10px; }
+
+  .tab { display: none; margin-top: 15px; }
+  .tab.active { display: block; }
+
+  #history {
+    max-height: 120px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 10px;
+  }
+  body.dark #history { background: #333; color: #eee; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-controls">
+    <button class="mic-btn" id="micBtn">🎤</button>
+    <button class="theme-btn" id="themeBtn">🌗</button>
+  </div>
+
+  <div class="tab-btns">
+    <button id="calcTabBtn">🧮</button>
+    <button id="histTabBtn">🕘</button>
+    <button id="convTabBtn">💱</button>
+  </div>
+
+  <!-- Calculator -->
+  <div id="calcTab" class="tab active">
+    <input type="text" id="display" readonly>
+    <div class="buttons">
+      <button onclick="press('7')">7</button>
+      <button onclick="press('8')">8</button>
+      <button onclick="press('9')">9</button>
+      <button onclick="press('/')">÷</button>
+      <button onclick="press('4')">4</button>
+      <button onclick="press('5')">5</button>
+      <button onclick="press('6')">6</button>
+      <button onclick="press('*')">×</button>
+      <button onclick="press('1')">1</button>
+      <button onclick="press('2')">2</button>
+      <button onclick="press('3')">3</button>
+      <button onclick="press('-')">−</button>
+      <button onclick="press('0')">0</button>
+      <button onclick="press('.')">.</button>
+      <button onclick="calculate()">=</button>
+      <button onclick="press('+')">+</button>
+      <button onclick="clearDisplay()" style="grid-column: span 2; background:#ef5350;">C</button>
+      <button onclick="del()" style="grid-column: span 2; background:#ab47bc;">DEL</button>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="histTab" class="tab">
+    <div id="history"><b>History:</b><br></div>
+    <button onclick="clearHistory()" style="margin-top:10px;width:100%;background:#ef5350;">Clear History</button>
+  </div>
+
+  <!-- Converter -->
+  <div id="convTab" class="tab">
+    <h3>Offline Currency Converter</h3>
+    <input type="number" id="amount" placeholder="Enter amount">
+    <select id="from">
+      <option value="INR">INR 🇮🇳</option>
+      <option value="USD">USD 🇺🇸</option>
+      <option value="EUR">EUR 🇪🇺</option>
+      <option value="JPY">JPY 🇯🇵</option>
+    </select>
+    <select id="to">
+      <option value="USD">USD 🇺🇸</option>
+      <option value="INR">INR 🇮🇳</option>
+      <option value="EUR">EUR 🇪🇺</option>
+      <option value="JPY">JPY 🇯🇵</option>
+    </select>
+    <button onclick="convert()" style="margin-top:10px;width:100%;">Convert</button>
+    <div id="result" style="text-align:center;margin-top:10px;font-size:18px;"></div>
+  </div>
+</div>
+
+<script>
+  const display = document.getElementById('display');
+  const micBtn = document.getElementById('micBtn');
+  const synth = window.speechSynthesis;
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'en-IN';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  let listening = false;
+
+  const rates = { INR: 1, USD: 0.012, EUR: 0.011, JPY: 1.8 };
+  let history = [];
+
+  const tabs = { calc: calcTab, hist: histTab, conv: convTab };
+  function showTab(t) {
+    Object.values(tabs).forEach(tab => tab.classList.remove('active'));
+    tabs[t].classList.add('active');
+  }
+  calcTabBtn.onclick = () => showTab('calc');
+  histTabBtn.onclick = () => showTab('hist');
+  convTabBtn.onclick = () => showTab('conv');
+
+  function speak(text) {
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = 'en-IN';
+    synth.speak(msg);
+  }
+
+  function press(v){ display.value += v; }
+  function clearDisplay(){ display.value=''; speak('Display cleared'); }
+  function del(){ display.value = display.value.slice(0,-1); }
+
+  function calculate(){
+    try{
+      const result = eval(display.value);
+      history.push(`${display.value} = ${result}`);
+      updateHistory();
+      display.value = result;
+      speak(`The answer is ${result}`);
+    }catch{ speak('Error'); }
+  }
+
+  function updateHistory(){
+    historyDiv = document.getElementById('history');
+    historyDiv.innerHTML = '<b>History:</b><br>' + history.join('<br>');
+  }
+
+  function clearHistory(){
+    history = [];
+    updateHistory();
+    speak('History cleared');
+  }
+
+  function convert(){
+    const amt = parseFloat(document.getElementById('amount').value);
+    const from = fromSelect.value;
+    const to = toSelect.value;
+    const result = (amt / rates[from]) * rates[to];
+    resultDiv.textContent = `${amt} ${from} = ${result.toFixed(2)} ${to}`;
+    speak(`${amt} ${from} equals ${result.toFixed(2)} ${to}`);
+  }
+
+  themeBtn.onclick = ()=> {
+    document.body.classList.toggle('dark');
+    speak(document.body.classList.contains('dark')?'Dark mode on':'Light mode on');
+  };
+
+  micBtn.onclick = ()=> {
+    if(!listening){
+      listening = true;
+      micBtn.classList.add('active');
+      speak('Voice assistant activated');
+      recognition.start();
+    } else {
+      listening = false;
+      micBtn.classList.remove('active');
+      recognition.stop();
+      speak('Voice assistant off');
+    }
+  };
+
+  recognition.onresult = (e)=>{
+    const cmd = e.results[e.results.length-1][0].transcript.toLowerCase().trim();
+    console.log('Voice:', cmd);
+
+    if(cmd.includes('clear')) clearDisplay();
+    else if(cmd.includes('delete')) del();
+    else if(cmd.includes('dark')) document.body.classList.add('dark');
+    else if(cmd.includes('light')) document.body.classList.remove('dark');
+    else if(cmd.includes('off')) micBtn.click();
+    else if(cmd.includes('history')) showTab('hist');
+    else if(cmd.includes('calculator')) showTab('calc');
+    else if(cmd.includes('convert')) showTab('conv');
+    else if(cmd.includes('clear history')) clearHistory();
+    else if(cmd.match(/\d/)){
+      const expr = cmd.replace('plus','+').replace('minus','-').replace('into','*').replace('divide','/').replace(/[^\d+\-*/.]/g,'');
+      display.value = expr;
+      calculate();
+    } else speak('Sorry, I did not understand');
+  };
+
+  recognition.onerror = ()=>{ if(listening) recognition.start(); };
+</script>
+</body>
+</html>
